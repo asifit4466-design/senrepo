@@ -1,5 +1,9 @@
+import html
+import textwrap
+
 import streamlit as st
 from graphviz import Digraph
+import streamlit.components.v1 as components
 from workflows import WORKFLOWS, DOMAIN, SOURCES
 from analytics import render_analytics
 
@@ -92,37 +96,202 @@ COLORS = {
     "process": "#f7f8f7",
 }
 
+def wrap_text(text, width):
+    text = " ".join(str(text).split())
+
+    if not text:
+        return [""]
+
+    return textwrap.wrap(
+        text,
+        width=width,
+        break_long_words=False,
+        break_on_hyphens=False,
+    ) or [text]
+
 
 def graph_for(steps, focus=None):
+    """
+    Build a large, readable left-to-right workflow diagram.
+
+    Large cards are intentionally kept at their natural size.
+    The full workflow is horizontally scrollable instead of
+    being compressed into a tiny diagram.
+    """
+
     g = Digraph(format="svg")
-    g.attr(rankdir="LR", bgcolor="transparent", pad=".40", nodesep=".46", ranksep=".72")
+
+    g.attr(
+        rankdir="LR",
+        bgcolor="transparent",
+        pad="0.45",
+        nodesep="0.70",
+        ranksep="1.05",
+        splines="polyline",
+    )
+
     g.attr(
         "node",
         shape="box",
         style="rounded,filled",
         fontname="Segoe UI",
-        fontsize="11",
-        margin=".18,.14",
-        color="#aebdb5",
+        fontsize="16",
+        margin="0.24,0.20",
+        color="#9cafa4",
         fontcolor="#111827",
     )
-    # Strong arrowheads make the legal/business sequence visually unambiguous.
-    g.attr("edge", color="#305c4b", arrowsize="1.0", penwidth="2.2", arrowhead="normal", fontcolor="#111827")
+
+    g.attr(
+        "edge",
+        color="#305c4b",
+        arrowsize="1.35",
+        penwidth="2.8",
+        arrowhead="normal",
+        fontname="Segoe UI Semibold",
+        fontcolor="#111827",
+        fontsize="12",
+    )
+
     for i, (num, title, desc, kind) in enumerate(steps):
-        label = f"{num}. {title}"
-        if i == 0 or i == len(steps) - 1:
-            label += f"\n{desc}"
-        else:
-            label += "\n" + desc
-        attrs = {"fillcolor": COLORS.get(kind, "#f7f8f7")}
+
+        title_lines = wrap_text(title, 28)
+        desc_lines = wrap_text(desc, 42)
+
+        title_html = "<BR ALIGN='LEFT'/>".join(
+            html.escape(x) for x in title_lines
+        )
+
+        desc_html = "<BR ALIGN='LEFT'/>".join(
+            html.escape(x) for x in desc_lines
+        )
+
+        current_badge = ""
+
         if focus == i:
-            attrs.update({"penwidth": "4", "color": "#0b6b4b", "fontcolor": "#071b12"})
-        g.node(f"n{i}", label=label, **attrs)
+            current_badge = (
+                "<TR><TD ALIGN='LEFT'>"
+                "<FONT COLOR='#0B6B4B' POINT-SIZE='12'>"
+                "● CURRENT STEP"
+                "</FONT>"
+                "</TD></TR>"
+            )
+
+        label = f"""
+<<TABLE BORDER="0"
+         CELLBORDER="0"
+         CELLSPACING="0"
+         CELLPADDING="7">
+
+    <TR>
+        <TD ALIGN="LEFT">
+            <FONT
+                FACE="Segoe UI"
+                COLOR="#111827"
+                POINT-SIZE="12">
+                <B>{html.escape(str(num))}</B>
+            </FONT>
+        </TD>
+    </TR>
+
+    <TR>
+        <TD ALIGN="LEFT">
+            <FONT
+                FACE="Segoe UI"
+                COLOR="#111827"
+                POINT-SIZE="18">
+                <B>{title_html}</B>
+            </FONT>
+        </TD>
+    </TR>
+
+    {current_badge}
+
+    <TR>
+        <TD ALIGN="LEFT">
+            <FONT
+                FACE="Segoe UI"
+                COLOR="#334155"
+                POINT-SIZE="14">
+                {desc_html}
+            </FONT>
+        </TD>
+    </TR>
+
+</TABLE>>
+""".strip()
+
+        attrs = {
+            "fillcolor": COLORS.get(kind, "#f7f8f7"),
+            "penwidth": "2.2",
+        }
+
+        if focus == i:
+            attrs.update(
+                {
+                    "penwidth": "4.5",
+                    "color": "#0b6b4b",
+                }
+            )
+
+        g.node(
+            f"n{i}",
+            label=label,
+            **attrs,
+        )
+
         if i:
-            edge_label = "NEXT"
-            g.edge(f"n{i-1}", f"n{i}", label=edge_label, fontsize="8")
+            g.edge(
+                f"n{i-1}",
+                f"n{i}",
+                label="NEXT",
+            )
+
     return g
 
+def render_large_workflow_graph(graph):
+    """
+    Render the workflow at its natural large size.
+
+    The user can scroll horizontally instead of the entire
+    diagram being scaled down.
+    """
+
+    svg = graph.pipe(
+        format="svg"
+    ).decode(
+        "utf-8",
+        errors="replace",
+    )
+
+    wrapper = f"""
+    <div style="
+        width:100%;
+        overflow-x:auto;
+        overflow-y:hidden;
+        border:1px solid #d7dfda;
+        border-radius:16px;
+        background:#fbfcfb;
+        padding:22px 18px 18px 18px;
+        box-sizing:border-box;
+    ">
+
+        <div style="
+            min-width:1180px;
+            width:max-content;
+        ">
+
+            {svg}
+
+        </div>
+
+    </div>
+    """
+
+    components.html(
+        wrapper,
+        height=620,
+        scrolling=False,
+    )
 
 is_master = selected.startswith("00 — MASTER")
 
@@ -146,8 +315,9 @@ with t1:
     idx = int(st.session_state.workflow_step)
     idx = max(0, min(idx, len(steps) - 1))
     st.session_state.workflow_step = idx
-
-    st.graphviz_chart(graph_for(steps, focus=idx), use_container_width=True)
+    render_large_workflow_graph(
+    graph_for(steps, focus=idx)
+)
 
     cols = st.columns([1, 3, 1])
     with cols[0]:
