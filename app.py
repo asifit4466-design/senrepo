@@ -36,7 +36,6 @@ st.markdown(
 /* ----------------------------------------------------------
    HERO
 ---------------------------------------------------------- */
-
 .hero {
     padding: 1.45rem 1.7rem;
     border-radius: 18px;
@@ -45,17 +44,6 @@ st.markdown(
     margin-bottom: 1rem;
     box-shadow: 0 5px 18px rgba(0, 0, 0, 0.08);
 }
-
-.hero h1 {
-    margin: 0 0 0.3rem 0;
-    font-size: 2rem;
-}
-
-.hero p {
-    margin: 0.2rem 0;
-    opacity: 0.95;
-}
-
 
 /* ----------------------------------------------------------
    GENERAL CARDS
@@ -200,34 +188,21 @@ st.markdown(
 # ============================================================
 # HERO
 # ============================================================
-
-st.markdown(
-    """
-<div class="hero">
-
-    <h1>
-        🏛️ Senate of Pakistan — Parliamentary Business
-        Workflow Explorer
-    </h1>
-
-    <p>
-        <b>Follow the work visually:</b>
-        start at the left, follow the arrows →
-        and see who acts, what happens next, and where
-        the matter ends.
-    </p>
-
-    <p>
-        Use the step navigator to move through a workflow
-        without guessing the sequence.
-    </p>
-
-</div>
-""",
-    unsafe_allow_html=True,
+st.title(
+    "🏛️ Senate of Pakistan — Parliamentary Business Workflow Explorer"
 )
 
+st.markdown(
+    "**Follow the work visually:** "
+    "start at the left, follow the arrows → "
+    "and see who acts, what happens next, "
+    "and where the matter ends."
+)
 
+st.caption(
+    "Use the step navigator to move through each "
+    "workflow without guessing the sequence."
+)
 # ============================================================
 # SIDEBAR
 # ============================================================
